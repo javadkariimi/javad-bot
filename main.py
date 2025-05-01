@@ -7,7 +7,7 @@ from telegram.ext import (
     ContextTypes, filters
 )
 from dotenv import load_dotenv
-from pymongo import MongoClient
+from pymongo import MongoClient, errors
 
 load_dotenv()
 
@@ -16,9 +16,12 @@ MONGO_URI = os.getenv("MONGO_URI")
 OWNER_ID = 52134388  # آیدی عددی جــواد
 
 # اتصال به دیتابیس
-mongo_client = MongoClient(MONGO_URI)
-db = mongo_client["telegram_bot"]
-collection = db["words"]
+try:
+    mongo_client = MongoClient(MONGO_URI)
+    db = mongo_client["telegram_bot"]
+    collection = db["words"]
+except Exception as e:
+    print("❌ خطا در اتصال به MongoDB:", e)
 
 # حافظه مرحله‌ای کاربران
 user_states = {}
@@ -28,11 +31,11 @@ STEP_WORD = "word"
 STEP_MEANING = "meaning"
 STEP_EXAMPLE = "example"
 
-# Flask برای زنده نگه داشتن
+# Flask برای UptimeRobot
 app = Flask(__name__)
 @app.route("/")
 def home():
-    return "ربات زنده است و به MongoDB وصله ✅"
+    return "ربات زنده است ✅"
 
 # شروع فرآیند
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -42,9 +45,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
     user_states[user_id] = {"step": STEP_WORD}
-    await update.message.reply_text("لطفاً کلمه خود را وارد کنید 📝")
+    await update.message.reply_text("📝 لطفاً کلمه خود را وارد کنید")
 
-# مدیریت پیام‌ها
+# پردازش مرحله‌ای پیام‌ها
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
@@ -61,25 +64,26 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state["step"] == STEP_WORD:
         state["word"] = text
         state["step"] = STEP_MEANING
-        await update.message.reply_text("حالا معنی کلمه را وارد کنید 🧠")
+        await update.message.reply_text("🧠 حالا معنی کلمه را وارد کنید")
     elif state["step"] == STEP_MEANING:
         state["meaning"] = text
         state["step"] = STEP_EXAMPLE
-        await update.message.reply_text("حالا برای این کلمه یک مثال بزنید ✍️")
+        await update.message.reply_text("✍️ حالا برای این کلمه یک مثال بزنید")
     elif state["step"] == STEP_EXAMPLE:
         state["example"] = text
 
-        # ذخیره در دیتابیس
-        collection.insert_one({
-            "word": state["word"],
-            "meaning": state["meaning"],
-            "example": state["example"],
-            "user_id": user_id
-        })
+        try:
+            collection.insert_one({
+                "word": state["word"],
+                "meaning": state["meaning"],
+                "example": state["example"],
+                "user_id": user_id
+            })
+            await update.message.reply_text("✅ کلمه با موفقیت ذخیره شد!")
+        except errors.PyMongoError as e:
+            await update.message.reply_text(f"❌ خطا در ذخیره‌سازی: {e}")
 
-        # پاک کردن وضعیت
         user_states.pop(user_id)
-        await update.message.reply_text("✅ کلمه با موفقیت ذخیره شد!")
 
 if __name__ == "__main__":
     telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
