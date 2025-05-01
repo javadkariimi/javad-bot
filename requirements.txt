@@ -1,3 +1,8 @@
 python-telegram-bot==20.8
 Flask==2.3.3
+<<<<<<< HEAD
 python-dotenv
+=======
+python-dotenv
+pymongo
+>>>>>>> 78ff3623c8b17719ad72f70ff3fa64a8e8e1fa79
