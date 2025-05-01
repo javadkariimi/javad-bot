@@ -31,9 +31,20 @@ STEP_MEANING = "meaning"
 
 # Flask برای UptimeRobot
 app = Flask(__name__)
-@app.route("/")
-def home():
-    return "ربات زنده است ✅"
+
+@app.route('/')
+def index():
+    return 'ربات زنده است ✅'
+
+if __name__ == "__main__":
+    import threading
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=10000)).start()
+
+    telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
+    telegram_app.add_handler(CommandHandler("start", start))
+    telegram_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    telegram_app.run_polling()
+
 
 # شروع فرآیند
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
