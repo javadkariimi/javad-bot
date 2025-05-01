@@ -29,7 +29,6 @@ user_states = {}
 # مرحله‌های ورودی
 STEP_WORD = "word"
 STEP_MEANING = "meaning"
-STEP_EXAMPLE = "example"
 
 # Flask برای UptimeRobot
 app = Flask(__name__)
@@ -67,19 +66,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🧠 حالا معنی کلمه را وارد کنید")
     elif state["step"] == STEP_MEANING:
         state["meaning"] = text
-        state["step"] = STEP_EXAMPLE
-        await update.message.reply_text("✍️ حالا برای این کلمه یک مثال بزنید")
-    elif state["step"] == STEP_EXAMPLE:
-        state["example"] = text
 
         try:
             collection.insert_one({
                 "word": state["word"],
                 "meaning": state["meaning"],
-                "example": state["example"],
                 "user_id": user_id
             })
-            await update.message.reply_text("✅ کلمه با موفقیت ذخیره شد!")
+            await update.message.reply_text("✅ کلمه و معنی با موفقیت ذخیره شدند!")
         except errors.PyMongoError as e:
             await update.message.reply_text(f"❌ خطا در ذخیره‌سازی: {e}")
 
