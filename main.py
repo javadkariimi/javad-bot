@@ -77,9 +77,8 @@ async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     question = random.choice(items)
     quiz_states[user_id] = question
-    await update.message.reply_text(f"❓ معنی این کلمه چیست؟
+    await update.message.reply_text(f"❓ معنی این کلمه چیست؟\n\n<b>{question['word']}</b>", parse_mode=ParseMode.HTML)
 
-<b>{question['word']}</b>", parse_mode=ParseMode.HTML)
 
 # دریافت پیام‌ها
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
