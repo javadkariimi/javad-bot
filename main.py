@@ -10,7 +10,7 @@ from telegram.ext import (
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# تنظیمات
+# بارگذاری تنظیمات
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -21,7 +21,6 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 STEP_WORD = "word"
 STEP_MEANING = "meaning"
-STEP_EXAMPLE = "example"
 user_states = {}
 quiz_sessions = {}
 pending_example = {}
@@ -30,39 +29,42 @@ pending_example = {}
 app = Flask(__name__)
 @app.route("/")
 def home():
-    return "ربات فعاله ✅"
+    return "ربات زنده است ✅"
 
-# /start – فقط کلمه و معنی
+# /start – افزودن کلمه و معنی
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
     user_states[update.effective_user.id] = {"step": STEP_WORD}
     await update.message.reply_text("📝 لطفاً کلمه را وارد کن")
 
-# دریافت پیام‌های متنی برای مراحل start و addexample
+# پیام متنی: هم برای start هم برای addexample
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
 
-    # افزودن جمله نمونه
+    # جمله نمونه
     if user_id in pending_example:
         word = pending_example[user_id]
-        result = supabase.table("words").select("*").eq("user_id", str(user_id)).eq("word", word).execute()
-        if result.data:
-            existing = result.data[0]
-            examples = existing.get("examples", []) or []
-            examples.append(text)
-            supabase.table("words").update({"examples": examples}).eq("id", existing["id"]).execute()
-            await update.message.reply_text(f"✅ جمله برای «{word}» ذخیره شد!")
-        else:
-            await update.message.reply_text("❌ کلمه‌ای با این نام پیدا نشد.")
+        try:
+            result = supabase.table("words").select("*").eq("user_id", str(user_id)).eq("word", word).execute()
+            if result.data:
+                entry = result.data[0]
+                examples = entry.get("examples", []) or []
+                examples.append(text)
+                supabase.table("words").update({"examples": examples}).eq("id", entry["id"]).execute()
+                await update.message.reply_text(f"✅ جمله برای «{word}» با موفقیت ذخیره شد!")
+            else:
+                await update.message.reply_text("❌ کلمه پیدا نشد.")
+        except Exception as e:
+            await update.message.reply_text(f"❌ خطا در ذخیره‌سازی جمله:\n{e}")
         del pending_example[user_id]
         return
 
-    # افزودن کلمه و معنی
+    # مراحل /start
     state = user_states.get(user_id)
     if not state:
-        await update.message.reply_text("لطفاً اول /start را بزن یا /addexample [کلمه] استفاده کن.")
+        await update.message.reply_text("لطفاً ابتدا /start بزن یا از /addexample استفاده کن.")
         return
     if state["step"] == STEP_WORD:
         state["word"] = text
@@ -79,10 +81,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }).execute()
             await update.message.reply_text("✅ کلمه و معنی ذخیره شدند!")
         except Exception as e:
-            await update.message.reply_text(f"❌ خطا در ذخیره‌سازی: {e}")
+            await update.message.reply_text(f"❌ خطا در ذخیره‌سازی:\n{e}")
         user_states.pop(user_id)
 
-# /addexample [کلمه]
+# /addexample [word]
 async def add_example(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id != OWNER_ID:
@@ -90,11 +92,15 @@ async def add_example(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("❗ لطفاً کلمه‌ای بنویس: /addexample Haus")
         return
-    word = " ".join(context.args)
-    pending_example[user_id] = word
-    await update.message.reply_text(f"✏️ حالا جمله‌ای برای «{word}» بنویس:")
+    word = " ".join(context.args).strip()
+    result = supabase.table("words").select("*").eq("user_id", str(user_id)).eq("word", word).execute()
+    if result.data:
+        pending_example[user_id] = word
+        await update.message.reply_text(f"✏️ حالا جمله‌ای برای «{word}» بنویس:")
+    else:
+        await update.message.reply_text("❌ کلمه‌ای با این نام پیدا نشد.")
 
-# /list – نمایش همه کلمات و جمله‌ها
+# /list – نمایش همه کلمات با معنی و جمله‌ها
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id != OWNER_ID:
@@ -113,9 +119,9 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text += "\n"
         await update.message.reply_text(text, parse_mode=ParseMode.HTML)
     except Exception as e:
-        await update.message.reply_text(f"❌ خطا در دریافت اطلاعات: {e}")
+        await update.message.reply_text(f"❌ خطا:\n{e}")
 
-# /quiz – ۱۰ سواله
+# /quiz – آزمون ۱۰ سواله
 async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id != OWNER_ID:
@@ -123,7 +129,7 @@ async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = supabase.table("words").select("*").eq("user_id", str(user_id)).execute()
     items = result.data
     if len(items) < 4:
-        await update.message.reply_text("📭 حداقل ۴ کلمه برای آزمون نیاز است.")
+        await update.message.reply_text("📭 حداقل ۴ کلمه باید ذخیره کرده باشی.")
         return
     random.shuffle(items)
     quiz_sessions[user_id] = {
@@ -155,13 +161,14 @@ async def send_next_question(update_or_query, context, user_id):
         parse_mode=ParseMode.HTML
     )
 
+# بررسی پاسخ کوییز
 async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
     session = quiz_sessions.get(user_id)
     if not session:
-        await query.edit_message_text("❌ آزمون یافت نشد.")
+        await query.edit_message_text("❌ آزمون پیدا نشد.")
         return
     correct = context.user_data.get("current_answer")
     selected = query.data
@@ -173,15 +180,15 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session["current"] += 1
     await send_next_question(query, context, user_id)
 
-# /help
+# /help – راهنما
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
     text = (
-        "📌 <b>دستورات:</b>\n\n"
+        "📌 <b>دستورات ربات:</b>\n\n"
         "/start – افزودن کلمه و معنی\n"
-        "/addexample [کلمه] – افزودن جمله نمونه برای کلمه\n"
-        "/list – نمایش همه کلمات، معانی و جمله‌ها\n"
+        "/addexample [کلمه] – افزودن جمله برای کلمه\n"
+        "/list – نمایش لیست کامل\n"
         "/quiz – آزمون ۱۰ سواله\n"
         "/help – راهنما"
     )
