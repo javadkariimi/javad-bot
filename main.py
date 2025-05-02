@@ -102,24 +102,28 @@ async def add_example(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # /list – نمایش همه کلمات با معنی و جمله‌ها
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id != OWNER_ID:
+    if update.effective_user.id != OWNER_ID:
         return
-    try:
-        result = supabase.table("words").select("*").eq("user_id", str(user_id)).execute()
-        items = result.data
-        if not items:
-            await update.message.reply_text("📭 هنوز هیچ کلمه‌ای ذخیره نکردی.")
-            return
-        text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
-        for i, item in enumerate(items, 1):
-            text += f"{i}. <b>{item['word']}</b>\n🟢 {item['meaning']}\n"
-            for j, ex in enumerate(item.get("examples", []), 1):
-                text += f"✏️ {j}) {ex}\n"
-            text += "\n"
-        await update.message.reply_text(text, parse_mode=ParseMode.HTML)
-    except Exception as e:
-        await update.message.reply_text(f"❌ خطا:\n{e}")
+
+    response = supabase.table("words").select("*").order("created_at", desc=True).execute()
+    data = response.data
+
+    if not data:
+        await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.", parse_mode=ParseMode.HTML)
+        return
+
+    text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
+    for i, word in enumerate(data, 1):
+        examples = word.get("examples")
+        if not isinstance(examples, list):
+            examples = []
+        examples_text = ""
+        if examples:
+            examples_text = "\n📝 مثال:\n" + "\n".join(f"▫️ {e}" for e in examples)
+
+        text += f"{i}. <b>{word['word']}</b> ➜ {word['meaning']}{examples_text}\n\n"
+
+    await update.message.reply_text(text.strip(), parse_mode=ParseMode.HTML)
 
 # /quiz – آزمون ۱۰ سواله
 async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
