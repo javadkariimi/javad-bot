@@ -152,7 +152,7 @@ async def example_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ خطا در ذخیره‌سازی جمله:\n{e}")
 
 
-@bot.command("addexample")
+
 async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
