@@ -156,32 +156,34 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
     if not context.args:
-        await update.message.reply_text("❗ لطفاً کلمات را بعد از /export بنویس، مثل:\n/export Wort1 / Wort2\n(از / به عنوان جداکننده استفاده کن، چون کلمه‌ها ممکنه ویرگول داشته باشن)")
+        await update.message.reply_text("❗ لطفاً شماره‌ها را بعد از /export بنویس، مثل:\n/export 1 3 5")
         return
-    raw_text = " ".join(context.args)
-    word_list = [re.sub(r"\s*,\s*", ", ", w.strip()) for w in raw_text.split("/") if w.strip()]
-    word_list = [w.lower() for w in word_list]
+    try:
+        indexes = [int(x) for x in context.args if x.isdigit()]
+    except ValueError:
+        await update.message.reply_text("❌ لطفاً فقط شماره‌های معتبر وارد کن.")
+        return
 
-    if not word_list:
-        await update.message.reply_text("❗ فرمت لیست کلمات درست نیست.")
+    if not indexes:
+        await update.message.reply_text("❗ شماره‌ای وارد نشده یا نامعتبر است.")
         return
 
     data = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
-    filtered = [w for w in data if w["word"].strip().lower() in word_list]
+    filtered = [w for w in data if w.get("index") in indexes]
 
     if not filtered:
-        await update.message.reply_text("❌ هیچ کلمه‌ای از لیست پیدا نشد.")
+        await update.message.reply_text("❌ هیچ کلمه‌ای با این شماره‌ها پیدا نشد.")
         return
 
     text = "📋 <b>کلمه‌های انتخاب‌شده:</b>\n\n"
-    for i, w in enumerate(filtered, 1):
-        text += f"{i}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
+    for w in filtered:
+        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
     doc = Document()
     doc.add_heading("Exportierte Wörter", 0)
     for item in filtered:
-        doc.add_heading(item["word"], level=1)
+        doc.add_heading(f"{item['index']}. {item['word']}", level=1)
         doc.add_paragraph(f"🔹 معنی: {item['meaning']}")
         examples = item.get("examples") or []
         if examples:
