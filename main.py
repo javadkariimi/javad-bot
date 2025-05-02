@@ -150,19 +150,21 @@ async def example_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ خطا در ذخیره‌سازی جمله:\n{e}")
 
+...
+
 async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
     if not context.args:
-        await update.message.reply_text("❗ لطفاً کلمات را بعد از /export بنویس، مثل:\n/export Wort1, Wort2")
+        await update.message.reply_text("❗ لطفاً کلمات را بعد از /export بنویس، مثل:\n/export Wort1 / Wort2\n(از / به عنوان جداکننده استفاده کن، چون کلمه‌ها ممکنه ویرگول داشته باشن)")
         return
     raw_text = " ".join(context.args)
-    word_list = [w.strip() for w in raw_text.split(",") if w.strip()]
+    word_list = [re.sub(r"\s*,\s*", ", ", w.strip()) for w in raw_text.split("/") if w.strip()]
     if not word_list:
         await update.message.reply_text("❗ فرمت لیست کلمات درست نیست.")
         return
     data = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
-    filtered = [w for w in data if w["word"] in word_list]
+    filtered = [w for w in data if w["word"].strip() in word_list]
     if not filtered:
         await update.message.reply_text("❌ هیچ کلمه‌ای از لیست پیدا نشد.")
         return
@@ -184,6 +186,8 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     doc.save(buffer)
     buffer.seek(0)
     await update.message.reply_document(document=buffer, filename="woerter_export.docx")
+
+
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
