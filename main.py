@@ -152,49 +152,31 @@ async def example_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ خطا در ذخیره‌سازی جمله:\n{e}")
 
 
-async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@bot.command("addexample")
+async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
+
     if not context.args:
-        await update.message.reply_text("❗ لطفاً شماره‌ها را بعد از /export بنویس، مثل:\n/export 1 3 5")
-        return
-    try:
-        indexes = [int(x) for x in context.args if x.isdigit()]
-    except ValueError:
-        await update.message.reply_text("❌ لطفاً فقط شماره‌های معتبر وارد کن.")
+        await update.message.reply_text("❗ لطفاً کلمه یا شماره‌اش را بنویس: /addexample 3 یا /addexample Haus")
         return
 
-    if not indexes:
-        await update.message.reply_text("❗ شماره‌ای وارد نشده یا نامعتبر است.")
+    keyword = " ".join(context.args).strip()
+    all_words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
+
+    selected = None
+    if keyword.isdigit():
+        index = int(keyword)
+        selected = next((w for w in all_words if w.get("index") == index), None)
+    else:
+        selected = next((w for w in all_words if w.get("word") == keyword), None)
+
+    if not selected:
+        await update.message.reply_text("❌ کلمه‌ای با این مشخصات پیدا نشد.")
         return
 
-    data = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
-    filtered = [w for w in data if w.get("index") in indexes]
-
-    if not filtered:
-        await update.message.reply_text("❌ هیچ کلمه‌ای با این شماره‌ها پیدا نشد.")
-        return
-
-    text = "📋 <b>کلمه‌های انتخاب‌شده:</b>\n\n"
-    for w in filtered:
-        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
-    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
-
-    doc = Document()
-    doc.add_heading("Exportierte Wörter", 0)
-    for item in filtered:
-        doc.add_heading(f"{item['index']}. {item['word']}", level=1)
-        doc.add_paragraph(f"🔹 معنی: {item['meaning']}")
-        examples = item.get("examples") or []
-        if examples:
-            doc.add_paragraph("📝 مثال‌ها:")
-            for ex in examples:
-                doc.add_paragraph(f"• {ex}", style='List Bullet')
-
-    buffer = BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-    await update.message.reply_document(document=buffer, filename="woerter_export.docx")
+    context.user_data["add_example_word"] = selected
+    await update.message.reply_text(f"✍ لطفاً جمله‌ای برای \"{selected['word']}\" ارسال کنید:")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
