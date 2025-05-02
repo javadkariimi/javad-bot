@@ -2,3 +2,4 @@ python-telegram-bot==20.8
 Flask==2.3.3
 python-dotenv
 supabase
+python-docx
