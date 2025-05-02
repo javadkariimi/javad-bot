@@ -200,13 +200,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
     text = (
-        "📌 <b>دستورات موجود:</b>\n\n"
-        "/start – افزودن کلمه جدید\n"
-        "/list – نمایش همه کلمات\n"
-        "/quiz – آزمون چهارگزینه‌ای\n"
-        "/addexample – افزودن جمله\n"
-        "/export – خروجی گرفتن فایل Word\n"
-        "/help – نمایش راهنما"
+        "📌 <b>دستورات ربات:</b>\n\n"
+        "/start – افزودن کلمه و معنی\n"
+        "/addexample [کلمه] – افزودن جمله برای کلمه\n"
+        "/list – نمایش لیست کامل\n"
+        "/quiz – آزمون ۱۰ سواله\n"
+        "/export – خروجی گرفتن از کلمات با شماره‌ها\n"
+        "/help – راهنما"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
