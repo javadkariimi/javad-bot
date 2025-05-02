@@ -47,14 +47,9 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not items:
             await update.message.reply_text("📭 هنوز هیچ کلمه‌ای ذخیره نکردی.")
             return
-        text = "📚 <b>کلمه‌های ذخیره‌شده:</b>
-
-"
+        text = "📚 <b>کلمه‌های ذخیره‌شده:</b>"
         for i, item in enumerate(items, 1):
-            text += f"{i}. <b>{item['word']}</b>
-🟢 {item['meaning']}
-
-"
+            text += f"{i}. <b>{item['word']}</b>{item['meaning']}"
         await update.message.reply_text(text, parse_mode=ParseMode.HTML)
     except Exception as e:
         await update.message.reply_text(f"❌ خطا در دریافت اطلاعات: {e}")
@@ -82,8 +77,7 @@ async def send_next_question(update: Update, context: ContextTypes.DEFAULT_TYPE,
     if session["current"] >= len(session["items"]):
         total = len(session["items"])
         score = session["score"]
-        await update.message.reply_text(f"✅ آزمون تمام شد!
-امتیاز شما: {score} از {total}")
+        await update.message.reply_text(f"✅ آزمون تمام شد!امتیاز شما: {score} از {total}")
         quiz_sessions.pop(user_id)
         return
     question = session["items"][session["current"]]
@@ -157,16 +151,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
-    text = (
-        "📌 <b>دستورات موجود:</b>
-
-"
-        "/start – افزودن کلمه جدید
-"
-        "/list – نمایش همه کلمات ذخیره‌شده
-"
-        "/quiz – آزمون ۱۰ سواله چهارگزینه‌ای
-"
+   text = (
+        "📌 <b>دستورات موجود:</b>\n\n"
+        "/start – افزودن کلمه جدید\n"
+        "/list – نمایش همه کلمات ذخیره‌شده\n"
+        "/quiz – آزمون چهارگزینه‌ای از کلمات\n"
         "/help – نمایش همین راهنما"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
