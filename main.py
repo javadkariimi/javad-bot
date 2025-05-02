@@ -54,12 +54,12 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not items:
             await update.message.reply_text("📭 هنوز هیچ کلمه‌ای ذخیره نکردی.")
             return
-        text = "📚 <b>کلمه‌های ذخیره‌شده:</b>
+        text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\\n\\n"
 
-"
+
+
         for i, item in enumerate(items, 1):
-            text += f"<b>{i}.</b> {item['word']} ➜ {item['meaning']}
-"
+            text += f"<b>{i}.</b> {item['word']} ➜ {item['meaning']}"
         await update.message.reply_text(text, parse_mode=ParseMode.HTML)
     except Exception as e:
         await update.message.reply_text(f"❌ خطا در دریافت اطلاعات: {e}")
