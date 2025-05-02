@@ -1,4 +1,3 @@
-
 import os
 import random
 from flask import Flask
@@ -11,7 +10,7 @@ from telegram.ext import (
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-# بارگذاری محیط
+# بارگذاری تنظیمات
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -27,13 +26,13 @@ STEP_MEANING = "meaning"
 user_states = {}
 quiz_sessions = {}
 
-# UptimeRobot
+# برای UptimeRobot
 app = Flask(__name__)
 @app.route("/")
 def home():
     return "ربات زنده است ✅"
 
-# شروع اضافه کردن کلمه
+# /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         await update.message.reply_text("شما اجازه استفاده از این ربات را ندارید ❌")
@@ -41,7 +40,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_states[update.effective_user.id] = {"step": STEP_WORD}
     await update.message.reply_text("📝 لطفاً کلمه خود را وارد کنید")
 
-# لیست کلمات
+# /list – لیست خوانا
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id != OWNER_ID:
@@ -53,16 +52,14 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not items:
             await update.message.reply_text("📭 هنوز هیچ کلمه‌ای ذخیره نکردی.")
             return
-       text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
-for i, item in enumerate(items, 1):
-    text += f"{i}. <b>{item['word']}</b>\n🟢 {item['meaning']}\n\n"
+        text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
+        for i, item in enumerate(items, 1):
+            text += f"{i}. <b>{item['word']}</b>\n🟢 {item['meaning']}\n\n"
         await update.message.reply_text(text, parse_mode=ParseMode.HTML)
-
-
     except Exception as e:
         await update.message.reply_text(f"❌ خطا در دریافت اطلاعات: {e}")
 
-# آزمون چهارگزینه‌ای
+# /quiz – چهار گزینه‌ای با دکمه
 async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id != OWNER_ID:
@@ -81,17 +78,18 @@ async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if option not in options:
             options.append(option)
     random.shuffle(options)
-    keyboard = [[InlineKeyboardButton(opt, callback_data=f"{opt}")] for opt in options]
+    keyboard = [[InlineKeyboardButton(opt, callback_data=opt)] for opt in options]
     quiz_sessions[user_id] = {
         "question": question["word"],
         "correct": correct_meaning
     }
-    await update.message.reply_text(f"❓ معنی این کلمه چیست؟📘 <b>{question['word']}</b>",
+    await update.message.reply_text(
+        f"❓ معنی این کلمه چیست؟\n\n📘 <b>{question['word']}</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode=ParseMode.HTML
     )
 
-# پاسخ به انتخاب دکمه
+# پاسخ انتخاب شده
 async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -105,10 +103,10 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == correct:
         await query.edit_message_text("✅ آفرین درست گفتی")
     else:
-        await query.edit_message_text(f"❌ نه، جواب درست بود:<b>{correct}</b>", parse_mode=ParseMode.HTML)
+        await query.edit_message_text(f"❌ نه، جواب درست بود:\n<b>{correct}</b>", parse_mode=ParseMode.HTML)
     quiz_sessions.pop(user_id)
 
-# پیام‌های متنی
+# ذخیره کلمه و معنی
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
@@ -139,12 +137,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
-    text = (        "📌 <b>دستورات موجود:</b>"
-             "/start – افزودن کلمه جدید"
-             "/list – نمایش همه کلمات ذخیره‌شده" 
-             "/quiz – آزمون چهارگزینه‌ای از کلمات"
-             "/help – نمایش همین راهنما"
-
+    text = (
+        "📌 <b>دستورات موجود:</b>\n\n"
+        "/start – افزودن کلمه جدید\n"
+        "/list – نمایش همه کلمات ذخیره‌شده\n"
+        "/quiz – آزمون چهارگزینه‌ای از کلمات\n"
+        "/help – نمایش همین راهنما"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
