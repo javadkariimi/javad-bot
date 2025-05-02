@@ -84,9 +84,7 @@ async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "question": question["word"],
         "correct": correct_meaning
     }
-    await update.message.reply_text( f"❓ معنی این کلمه چیست؟"
-
-📘 <b>{question['word']}</b>",
+    await update.message.reply_text(f"❓ معنی این کلمه چیست؟📘 <b>{question['word']}</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode=ParseMode.HTML
     )
@@ -105,8 +103,7 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == correct:
         await query.edit_message_text("✅ آفرین درست گفتی")
     else:
-        await query.edit_message_text(f"❌ نه، جواب درست بود:
-<b>{correct}</b>", parse_mode=ParseMode.HTML)
+        await query.edit_message_text(f"❌ نه، جواب درست بود:<b>{correct}</b>", parse_mode=ParseMode.HTML)
     quiz_sessions.pop(user_id)
 
 # پیام‌های متنی
@@ -140,15 +137,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
-    text = (
-        "📌 <b>دستورات موجود:</b>\n\n"
-        "/start – افزودن کلمه جدید\n"
-        "/list – نمایش همه کلمات ذخیره‌شده\n"
-        "/quiz – آزمون چهارگزینه‌ای از کلمات\n"
-        "/help – نمایش همین راهنما"
+    text = (        "📌 <b>دستورات موجود:</b>"
+             "/start – افزودن کلمه جدید"
+             "/list – نمایش همه کلمات ذخیره‌شده" 
+             "/quiz – آزمون چهارگزینه‌ای از کلمات"
+             "/help – نمایش همین راهنما"
+
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
-
 
 # اجرای ربات
 if __name__ == "__main__":
