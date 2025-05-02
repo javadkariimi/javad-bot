@@ -84,8 +84,7 @@ async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "question": question["word"],
         "correct": correct_meaning
     }
-    await update.message.reply_text(
-        f"❓ معنی این کلمه چیست؟
+    await update.message.reply_text( f"❓ معنی این کلمه چیست؟"
 
 📘 <b>{question['word']}</b>",
         reply_markup=InlineKeyboardMarkup(keyboard),
