@@ -151,7 +151,6 @@ async def example_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ خطا در ذخیره‌سازی جمله:\n{e}")
 
-...
 
 async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -161,18 +160,24 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     raw_text = " ".join(context.args)
     word_list = [re.sub(r"\s*,\s*", ", ", w.strip()) for w in raw_text.split("/") if w.strip()]
+    word_list = [w.lower() for w in word_list]
+
     if not word_list:
         await update.message.reply_text("❗ فرمت لیست کلمات درست نیست.")
         return
+
     data = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
-    filtered = [w for w in data if w["word"].strip() in word_list]
+    filtered = [w for w in data if w["word"].strip().lower() in word_list]
+
     if not filtered:
         await update.message.reply_text("❌ هیچ کلمه‌ای از لیست پیدا نشد.")
         return
+
     text = "📋 <b>کلمه‌های انتخاب‌شده:</b>\n\n"
     for i, w in enumerate(filtered, 1):
         text += f"{i}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
     doc = Document()
     doc.add_heading("Exportierte Wörter", 0)
     for item in filtered:
@@ -183,12 +188,11 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
             doc.add_paragraph("📝 مثال‌ها:")
             for ex in examples:
                 doc.add_paragraph(f"• {ex}", style='List Bullet')
+
     buffer = BytesIO()
     doc.save(buffer)
     buffer.seek(0)
     await update.message.reply_document(document=buffer, filename="woerter_export.docx")
-
-
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
