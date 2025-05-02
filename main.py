@@ -93,9 +93,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text.lower() == correct:
             await update.message.reply_text("✅ آفرین! درست گفتی.")
         else:
-            await update.message.reply_text(f"❌ جواب اشتباه بود. معنی درست:
-<b>{correct}</b>", parse_mode=ParseMode.HTML)
-        quiz_states.pop(user_id)
+            await update.message.reply_text(f"❌ جواب اشتباه بود. معنی درست:\n<b>{correct}</b>", parse_mode=ParseMode.HTML)
+
         return
 
     # افزودن کلمه و معنی
