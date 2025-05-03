@@ -22,6 +22,8 @@ OWNER_ID = int(os.getenv("OWNER_ID"))
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
+user_states = {}  # اضافه شد
+
 
 # --- START: Add new word ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -64,11 +66,10 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
         return
 
-    text = "📚 <b>کلمه‌های ذخیره‌شده:</b>"
+    text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n"
     for w in words:
-        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}"
+        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
-
 
 async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -93,8 +94,6 @@ async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data["add_example_word"] = selected
     await update.message.reply_text(f'✍ لطفاً جمله‌ای برای "{selected["word"]}" ارسال کنید:')
 
-
-
 async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
@@ -115,9 +114,9 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ کلمه‌ای با این شماره‌ها پیدا نشد.")
         return
 
-    text = "📋 <b>کلمه‌های انتخاب‌شده:</b>"
+    text = "📋 <b>کلمه‌های انتخاب‌شده:</b>\n"
     for w in filtered:
-        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}"
+        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
     doc = Document()
@@ -136,7 +135,6 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     buffer.seek(0)
     await update.message.reply_document(document=buffer, filename="woerter_export.docx")
 
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
@@ -149,10 +147,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/help – نمایش همین راهنما"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
-
-# --- Main ---
-app = ApplicationBuilder().token(BOT_TOKEN).build()
-
 
 async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -170,8 +164,7 @@ async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["quiz"] = session
     await ask_question(update, context)
 
-
-async def ask_question(update, context):
+async def ask_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session = context.user_data["quiz"]
     item = session["items"][session["current"]]
     options = random.sample(session["items"], 3)
@@ -180,13 +173,12 @@ async def ask_question(update, context):
 
     buttons = [[InlineKeyboardButton(o["meaning"], callback_data=o["word"])] for o in options]
     await update.message.reply_text(
-        f"❓ سوال {session['current'] + 1} از {len(session['items'])}<b>{item['word']}</b> یعنی چی؟",
+        f"❓ سوال {session['current'] + 1} از {len(session['items'])}: <b>{item['word']}</b> یعنی چی؟",
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
-
-async def answer_callback(update, context):
+async def answer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     session = context.user_data.get("quiz")
@@ -197,7 +189,7 @@ async def answer_callback(update, context):
         session["score"] += 1
         await query.edit_message_text("✅ آفرین درست گفتی")
     else:
-        await query.edit_message_text(f"❌ جواب اشتباه بود. معنی درست:{current_item['meaning']}")
+        await query.edit_message_text(f"❌ جواب اشتباه بود. معنی درست: {current_item['meaning']}")
 
     session["current"] += 1
     if session["current"] < len(session["items"]):
@@ -208,7 +200,6 @@ async def answer_callback(update, context):
             text=f"🏁 آزمون تمام شد. امتیاز: {session['score']} از {len(session['items'])}"
         )
 
-
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("list", list_words))
 app.add_handler(CommandHandler("addexample", add_example_command))
@@ -216,6 +207,6 @@ app.add_handler(CommandHandler("quiz", quiz))
 app.add_handler(CommandHandler("export", export_words))
 app.add_handler(CommandHandler("help", help_command))
 app.add_handler(CallbackQueryHandler(answer_callback))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
 
 app.run_polling()
