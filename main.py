@@ -34,6 +34,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.strip()
     if state["step"] == "word":
+        ...
+
         state["word"] = text
         state["step"] = "meaning"
         await update.message.reply_text("🧠 حالا معنی کلمه را وارد کنید")
