@@ -23,46 +23,37 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 
+# --- START: Add new word ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
-    await update.message.reply_text("📥 لطفاً کلمه را ارسال کن:فرمت: Wort , der , -e ➜ معنی")
+    await update.message.reply_text("📄 لطفاً کلمه خود را وارد کنید")
+    user_states[update.effective_user.id] = {"step": "word"}
 
+async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    state = user_states.get(user_id)
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != OWNER_ID:
+    if not state:
         return
 
-    text = update.message.text
-    if "➜" in text:
-        word, meaning = map(str.strip, text.split("➜", 1))
-        existing = supabase.table("words").select("index").eq("user_id", str(update.effective_user.id)).execute().data
-        max_index = max([w["index"] for w in existing if "index" in w], default=0)
-        result = supabase.table("words").insert({
-            "word": word,
-            "meaning": meaning,
-            "user_id": str(update.effective_user.id),
-            "index": max_index + 1
-        }).execute()
-        if result.data:
-            await update.message.reply_text("✅ کلمه ذخیره شد.")
-        else:
-            await update.message.reply_text("❌ خطا در ذخیره‌سازی.")
-    elif "add_example_word" in context.user_data:
-        word_data = context.user_data.pop("add_example_word")
-        examples = word_data.get("examples") or []
-        if isinstance(examples, str):
-            import json
-            examples = json.loads(examples)
-        examples.append(text)
-        result = supabase.table("words").update({"examples": examples}).eq("id", word_data["id"]).execute()
-        if result.data:
-            await update.message.reply_text("✅ جمله ذخیره شد.")
-        else:
-            await update.message.reply_text("❌ خطا در ذخیره‌سازی جمله.")
-    else:
-        await update.message.reply_text("❗ لطفاً از فرمت درست استفاده کن: Wort , der , -e ➜ معنی")
-
+    text = update.message.text.strip()
+    if state["step"] == "word":
+        state["word"] = text
+        state["step"] = "meaning"
+        await update.message.reply_text("🧠 حالا معنی کلمه را وارد کنید")
+    elif state["step"] == "meaning":
+        state["meaning"] = text
+        try:
+            supabase.table("words").insert({
+                "word": state["word"],
+                "meaning": state["meaning"],
+                "user_id": str(user_id),
+            }).execute()
+            await update.message.reply_text("✅ کلمه با موفقیت ذخیره شد.")
+        except Exception as e:
+            await update.message.reply_text(f"❌ خطا در ذخیره‌سازی:\n{e}")
+        user_states.pop(user_id)
 
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -150,15 +141,17 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
     text = (
-        "📌 <b>دستورات ربات:</b>"
-        "/start – افزودن کلمه و معنی"
-        "/addexample [کلمه یا شماره] – افزودن جمله برای کلمه"
-        "/list – نمایش لیست کلمات"
-        "/quiz – آزمون چهارگزینه‌ای"
-        "/export – خروجی گرفتن از شماره کلمات"
-        "/help – راهنمای دستورات"
+        "📌 <b>دستورات موجود:</b>\n\n"
+        "/start – افزودن کلمه جدید\n"
+        "/list – نمایش همه کلمات\n"
+        "/quiz – آزمون چهارگزینه‌ای\n"
+        "/addexample – افزودن جمله\n"
+        "/help – نمایش همین راهنما"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+# --- Main ---
+app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 
 async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
