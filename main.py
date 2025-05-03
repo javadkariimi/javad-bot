@@ -111,11 +111,33 @@ async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data["add_example_word"] = selected
     await update.message.reply_text(f'✍ لطفاً جمله‌ای برای "{selected["word"]}" ارسال کنید:')
 
+async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return
+
+    words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).order("index").execute().data
+    if not words:
+        await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
+        return
+
+    text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
+    for w in words:
+        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
+        examples = w.get("examples") or []
+        if examples:
+            for ex in examples:
+                text += f"📝 {ex}\n"
+        text += "\n"
+
+    await update.message.reply_text(text.strip(), parse_mode=ParseMode.HTML)
+
+
 async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
+
     if not context.args:
-        await update.message.reply_text("❗ لطفاً شماره‌ها را بعد از /export بنویس، مثل:/export 1 3 5")
+        await update.message.reply_text("❗ لطفاً شماره‌ها را بعد از /export بنویس، مثل: /export 1 3 5")
         return
 
     try:
@@ -131,11 +153,18 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ کلمه‌ای با این شماره‌ها پیدا نشد.")
         return
 
-    text = "📋 <b>کلمه‌های انتخاب‌شده:</b>\n"
+    text = "📋 <b>کلمه‌های انتخاب‌شده:</b>\n\n"
     for w in filtered:
         text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
-    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+        examples = w.get("examples") or []
+        if examples:
+            for ex in examples:
+                text += f"📝 {ex}\n"
+        text += "\n"
 
+    await update.message.reply_text(text.strip(), parse_mode=ParseMode.HTML)
+
+    # ساخت فایل Word
     doc = Document()
     doc.add_heading("Exportierte Wörter", 0)
     for item in filtered:
@@ -151,6 +180,7 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     doc.save(buffer)
     buffer.seek(0)
     await update.message.reply_document(document=buffer, filename="woerter_export.docx")
+
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
