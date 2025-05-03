@@ -25,7 +25,7 @@ app = ApplicationBuilder().token(BOT_TOKEN).build()
 user_states = {}  # اضافه شد
 
 
-async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     state = user_states.get(user_id)
 
@@ -212,7 +212,7 @@ async def answer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=f"🏁 آزمون تمام شد. امتیاز: {session['score']} از {len(session['items'])}"
         )
 
-app.add_handler(CommandHandler("start", message_handler))
+app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("list", list_words))
 app.add_handler(CommandHandler("addexample", add_example_command))
 app.add_handler(CommandHandler("quiz", quiz))
