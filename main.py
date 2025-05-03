@@ -25,13 +25,6 @@ app = ApplicationBuilder().token(BOT_TOKEN).build()
 user_states = {}  # اضافه شد
 
 
-# --- START: Add new word ---
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != OWNER_ID:
-        return
-    await update.message.reply_text("📄 لطفاً کلمه خود را وارد کنید")
-    user_states[update.effective_user.id] = {"step": "word"}
-
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     state = user_states.get(user_id)
@@ -46,16 +39,35 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🧠 حالا معنی کلمه را وارد کنید")
     elif state["step"] == "meaning":
         state["meaning"] = text
+
+        # 👉 گرفتن بزرگ‌ترین index قبلی برای اون کاربر
+        try:
+            result = supabase.table("words") \
+                .select("index") \
+                .eq("user_id", str(user_id)) \
+                .order("index", desc=True) \
+                .limit(1) \
+                .execute()
+            last_index = result.data[0]["index"] if result.data else 0
+        except Exception as e:
+            await update.message.reply_text(f"❌ خطا در خواندن index:\n{e}")
+            return
+
+        new_index = last_index + 1
+
         try:
             supabase.table("words").insert({
                 "word": state["word"],
                 "meaning": state["meaning"],
                 "user_id": str(user_id),
+                "index": new_index
             }).execute()
             await update.message.reply_text("✅ کلمه با موفقیت ذخیره شد.")
         except Exception as e:
             await update.message.reply_text(f"❌ خطا در ذخیره‌سازی:\n{e}")
+
         user_states.pop(user_id)
+
 
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
