@@ -1,156 +1,86 @@
 import os
-import json
-import random
 import re
+import random
 from io import BytesIO
-from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler,
-    filters, ContextTypes
+    ApplicationBuilder, CommandHandler, MessageHandler,
+    CallbackQueryHandler, ContextTypes, filters
 )
 from supabase import create_client, Client
 from docx import Document
+from dotenv import load_dotenv
 
 load_dotenv()
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 OWNER_ID = int(os.getenv("OWNER_ID"))
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-user_states = {}
-quiz_sessions = {}
+app = ApplicationBuilder().token(BOT_TOKEN).build()
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
-    await update.message.reply_text("📄 لطفاً کلمه خود را وارد کنید")
-    user_states[update.effective_user.id] = {"step": "word"}
+    await update.message.reply_text("📥 لطفاً کلمه را ارسال کن:
+فرمت: Wort , der , -e ➜ معنی")
 
-async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    state = user_states.get(user_id)
-    if not state:
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
         return
-    text = update.message.text.strip()
-    if state["step"] == "word":
-        state["word"] = text
-        state["step"] = "meaning"
-        await update.message.reply_text("🧠 حالا معنی کلمه را وارد کنید")
-    elif state["step"] == "meaning":
-        state["meaning"] = text
-        try:
-            supabase.table("words").insert({
-                "word": state["word"],
-                "meaning": state["meaning"],
-                "user_id": str(user_id),
-            }).execute()
-            await update.message.reply_text("✅ کلمه با موفقیت ذخیره شد.")
-        except Exception as e:
-            await update.message.reply_text(f"❌ خطا در ذخیره‌سازی:\n{e}")
-        user_states.pop(user_id)
+
+    text = update.message.text
+    if "➜" in text:
+        word, meaning = map(str.strip, text.split("➜", 1))
+        existing = supabase.table("words").select("index").eq("user_id", str(update.effective_user.id)).execute().data
+        max_index = max([w["index"] for w in existing if "index" in w], default=0)
+        result = supabase.table("words").insert({
+            "word": word,
+            "meaning": meaning,
+            "user_id": str(update.effective_user.id),
+            "index": max_index + 1
+        }).execute()
+        if result.data:
+            await update.message.reply_text("✅ کلمه ذخیره شد.")
+        else:
+            await update.message.reply_text("❌ خطا در ذخیره‌سازی.")
+    elif "add_example_word" in context.user_data:
+        word_data = context.user_data.pop("add_example_word")
+        examples = word_data.get("examples") or []
+        if isinstance(examples, str):
+            import json
+            examples = json.loads(examples)
+        examples.append(text)
+        result = supabase.table("words").update({"examples": examples}).eq("id", word_data["id"]).execute()
+        if result.data:
+            await update.message.reply_text("✅ جمله ذخیره شد.")
+        else:
+            await update.message.reply_text("❌ خطا در ذخیره‌سازی جمله.")
+    else:
+        await update.message.reply_text("❗ لطفاً از فرمت درست استفاده کن: Wort , der , -e ➜ معنی")
+
 
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
-    user_id = str(update.effective_user.id)
-    try:
-        response = supabase.table("words").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
-        words = response.data
-        if not words:
-            await update.message.reply_text("❗️هیچ کلمه‌ای ذخیره نشده.")
-            return
-        text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
-        for i, w in enumerate(words, 1):
-            text += f"<b>{i}.</b> <code>{w['word']}</code> ➜ {w['meaning']}\n"
-        await update.message.reply_text(text, parse_mode=ParseMode.HTML)
-    except Exception as e:
-        await update.message.reply_text(f"❌ خطا:\n{e}")
 
-async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != OWNER_ID:
+    words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).order("index").execute().data
+    if not words:
+        await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
         return
-    user_id = str(update.effective_user.id)
-    response = supabase.table("words").select("*").eq("user_id", user_id).execute()
-    items = response.data
-    if len(items) < 4:
-        await update.message.reply_text("حداقل ۴ کلمه باید ذخیره کرده باشید.")
-        return
-    quiz_sessions[user_id] = {
-        "items": random.sample(items, min(10, len(items))),
-        "current": 0,
-        "score": 0,
-    }
-    await send_question(update, context, user_id)
 
-async def send_question(update, context, user_id):
-    session = quiz_sessions[user_id]
-    index = session["current"]
-    item = session["items"][index]
-    options = random.sample(session["items"], 3)
-    if item not in options:
-        options[random.randint(0, 2)] = item
-    random.shuffle(options)
-    keyboard = [[InlineKeyboardButton(w["meaning"], callback_data=f"quiz|{user_id}|{w['id']}")] for w in options]
-    text = f"❓ سوال {index + 1} از {len(session['items'])}\n<b>{item['word']}</b> یعنی چه؟"
-    await context.bot.send_message(chat_id=user_id, text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML)
+    text = "📚 <b>کلمه‌های ذخیره‌شده:</b>
 
-async def quiz_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    _, user_id, answer_id = query.data.split("|")
-    session = quiz_sessions.get(user_id)
-    if not session:
-        return
-    current_item = session["items"][session["current"]]
-    correct = current_item["id"] == answer_id
-    session["score"] += int(correct)
-    reply = "✅ درست گفتی!" if correct else f"❌ جواب اشتباه بود. معنی درست:\n<b>{current_item['meaning']}</b>"
-    session["current"] += 1
-    await query.edit_message_text(reply, parse_mode=ParseMode.HTML)
-    if session["current"] < len(session["items"]):
-        await send_question(update, context, user_id)
-    else:
-        score = session["score"]
-        total = len(session["items"])
-        await context.bot.send_message(chat_id=user_id, text=f"🏁 آزمون تمام شد!\nامتیاز: {score} از {total}")
-        quiz_sessions.pop(user_id)
-
-async def add_example(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    data = supabase.table("words").select("id,word").eq("user_id", user_id).order("created_at", desc=True).execute().data
-    if not data:
-        await update.message.reply_text("❗️هیچ کلمه‌ای ثبت نکردی.")
-        return
-    keyboard = [[InlineKeyboardButton(w["word"], callback_data=f"select_example|{w['id']}")] for w in data]
-    await update.message.reply_text("🔍 کلمه‌ای انتخاب کن که می‌خوای جمله براش اضافه کنی:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-async def example_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    _, word_id = query.data.split("|")
-    context.user_data["addexample_id"] = word_id
-    await query.edit_message_text("✍ جمله رو وارد کن:")
-
-async def example_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    word_id = context.user_data.get("addexample_id")
-    if not word_id:
-        return
-    example = update.message.text.strip()
-    try:
-        word = supabase.table("words").select("examples").eq("id", word_id).single().execute().data
-        examples = word.get("examples") or []
-        if isinstance(examples, str):
-            examples = json.loads(examples)
-        examples.append(example)
-        supabase.table("words").update({"examples": examples}).eq("id", word_id).execute()
-        await update.message.reply_text("✅ جمله با موفقیت ذخیره شد.")
-        context.user_data["addexample_id"] = None
-    except Exception as e:
-        await update.message.reply_text(f"❌ خطا در ذخیره‌سازی جمله:\n{e}")
-
+"
+    for w in words:
+        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}
+"
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -158,52 +88,157 @@ async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     if not context.args:
-        await update.message.reply_text("❗ لطفاً کلمه یا شماره‌اش را بنویس: /addexample 3 یا /addexample Haus")
+        await update.message.reply_text("❗ لطفاً کلمه یا شماره را وارد کن: /addexample Haus یا /addexample 3")
         return
 
     keyword = " ".join(context.args).strip()
-    all_words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
-
+    words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
     selected = None
     if keyword.isdigit():
-        index = int(keyword)
-        selected = next((w for w in all_words if w.get("index") == index), None)
+        selected = next((w for w in words if w.get("index") == int(keyword)), None)
     else:
-        selected = next((w for w in all_words if w.get("word") == keyword), None)
+        selected = next((w for w in words if w.get("word") == keyword), None)
 
     if not selected:
-        await update.message.reply_text("❌ کلمه‌ای با این مشخصات پیدا نشد.")
+        await update.message.reply_text("❌ کلمه‌ای پیدا نشد.")
         return
 
     context.user_data["add_example_word"] = selected
-    await update.message.reply_text(f"✍ لطفاً جمله‌ای برای \"{selected['word']}\" ارسال کنید:")
+    await update.message.reply_text(f"✍ لطفاً جمله‌ای برای "{selected['word']}" ارسال کنید:")
+
+
+async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return
+    if not context.args:
+        await update.message.reply_text("❗ لطفاً شماره‌ها را بعد از /export بنویس، مثل:
+/export 1 3 5")
+        return
+
+    try:
+        indexes = [int(x) for x in context.args if x.isdigit()]
+    except ValueError:
+        await update.message.reply_text("❌ لطفاً فقط شماره‌های معتبر وارد کن.")
+        return
+
+    data = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
+    filtered = [w for w in data if w.get("index") in indexes]
+
+    if not filtered:
+        await update.message.reply_text("❌ کلمه‌ای با این شماره‌ها پیدا نشد.")
+        return
+
+    text = "📋 <b>کلمه‌های انتخاب‌شده:</b>
+
+"
+    for w in filtered:
+        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}
+"
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+    doc = Document()
+    doc.add_heading("Exportierte Wörter", 0)
+    for item in filtered:
+        doc.add_heading(f"{item['index']}. {item['word']}", level=1)
+        doc.add_paragraph(f"🔹 معنی: {item['meaning']}")
+        examples = item.get("examples") or []
+        if examples:
+            doc.add_paragraph("📝 مثال‌ها:")
+            for ex in examples:
+                doc.add_paragraph(f"• {ex}", style='List Bullet')
+
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    await update.message.reply_document(document=buffer, filename="woerter_export.docx")
+
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
     text = (
-        "📌 <b>دستورات ربات:</b>\n\n"
-        "/start – افزودن کلمه و معنی\n"
-        "/addexample [کلمه] – افزودن جمله برای کلمه\n"
-        "/list – نمایش لیست کامل\n"
-        "/quiz – آزمون ۱۰ سواله\n"
-        "/export – خروجی گرفتن از کلمات با شماره‌ها\n"
-        "/help – راهنما"
+        "📌 <b>دستورات ربات:</b>
+
+"
+        "/start – افزودن کلمه و معنی
+"
+        "/addexample [کلمه یا شماره] – افزودن جمله برای کلمه
+"
+        "/list – نمایش لیست کلمات
+"
+        "/quiz – آزمون چهارگزینه‌ای
+"
+        "/export – خروجی گرفتن از شماره کلمات
+"
+        "/help – راهنمای دستورات"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
-app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return
+    data = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
+    if len(data) < 4:
+        await update.message.reply_text("⚠️ حداقل ۴ کلمه لازم است.")
+        return
+
+    session = {
+        "items": random.sample(data, min(10, len(data))),
+        "current": 0,
+        "score": 0
+    }
+    context.user_data["quiz"] = session
+    await ask_question(update, context)
+
+
+async def ask_question(update, context):
+    session = context.user_data["quiz"]
+    item = session["items"][session["current"]]
+    options = random.sample(session["items"], 3)
+    options.append(item)
+    random.shuffle(options)
+
+    buttons = [[InlineKeyboardButton(o["meaning"], callback_data=o["word"])] for o in options]
+    await update.message.reply_text(
+        f"❓ سوال {session['current'] + 1} از {len(session['items'])}
+<b>{item['word']}</b> یعنی چی؟",
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
+
+async def answer_callback(update, context):
+    query = update.callback_query
+    await query.answer()
+    session = context.user_data.get("quiz")
+    if not session:
+        return
+    current_item = session["items"][session["current"]]
+    if query.data == current_item["word"]:
+        session["score"] += 1
+        await query.edit_message_text("✅ آفرین درست گفتی")
+    else:
+        await query.edit_message_text(f"❌ جواب اشتباه بود. معنی درست:
+{current_item['meaning']}")
+
+    session["current"] += 1
+    if session["current"] < len(session["items"]):
+        await ask_question(query, context)
+    else:
+        await context.bot.send_message(
+            chat_id=query.from_user.id,
+            text=f"🏁 آزمون تمام شد. امتیاز: {session['score']} از {len(session['items'])}"
+        )
+
+
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("list", list_words))
+app.add_handler(CommandHandler("addexample", add_example_command))
 app.add_handler(CommandHandler("quiz", quiz))
-app.add_handler(CommandHandler("addexample", add_example))
-app.add_handler(CommandHandler("export", add_example_command))
+app.add_handler(CommandHandler("export", export_words))
 app.add_handler(CommandHandler("help", help_command))
-app.add_handler(CallbackQueryHandler(quiz_button, pattern="^quiz\\|"))
-app.add_handler(CallbackQueryHandler(example_button, pattern="^select_example\\|"))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, example_response))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+app.add_handler(CallbackQueryHandler(answer_callback))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-if __name__ == "__main__":
-    print("✅ Bot is running...")
-    app.run_polling()
+app.run_polling()
