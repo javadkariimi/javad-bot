@@ -26,8 +26,7 @@ app = ApplicationBuilder().token(BOT_TOKEN).build()
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
-    await update.message.reply_text("📥 لطفاً کلمه را ارسال کن:
-فرمت: Wort , der , -e ➜ معنی")
+    await update.message.reply_text("📥 لطفاً کلمه را ارسال کن:فرمت: Wort , der , -e ➜ معنی")
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -74,12 +73,9 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
         return
 
-    text = "📚 <b>کلمه‌های ذخیره‌شده:</b>
-
-"
+    text = "📚 <b>کلمه‌های ذخیره‌شده:</b>"
     for w in words:
-        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}
-"
+        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}"
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
@@ -128,12 +124,9 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ کلمه‌ای با این شماره‌ها پیدا نشد.")
         return
 
-    text = "📋 <b>کلمه‌های انتخاب‌شده:</b>
-
-"
+    text = "📋 <b>کلمه‌های انتخاب‌شده:</b>"
     for w in filtered:
-        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}
-"
+        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}"
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
     doc = Document()
@@ -157,19 +150,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
     text = (
-        "📌 <b>دستورات ربات:</b>
-
-"
-        "/start – افزودن کلمه و معنی
-"
-        "/addexample [کلمه یا شماره] – افزودن جمله برای کلمه
-"
-        "/list – نمایش لیست کلمات
-"
-        "/quiz – آزمون چهارگزینه‌ای
-"
-        "/export – خروجی گرفتن از شماره کلمات
-"
+        "📌 <b>دستورات ربات:</b>"
+        "/start – افزودن کلمه و معنی"
+        "/addexample [کلمه یا شماره] – افزودن جمله برای کلمه"
+        "/list – نمایش لیست کلمات"
+        "/quiz – آزمون چهارگزینه‌ای"
+        "/export – خروجی گرفتن از شماره کلمات"
         "/help – راهنمای دستورات"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
