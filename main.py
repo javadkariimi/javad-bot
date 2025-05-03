@@ -26,6 +26,11 @@ user_states = {}  # اضافه شد
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return
+    await update.message.reply_text("📄 لطفاً کلمه خود را وارد کنید")
+    user_states[update.effective_user.id] = {"step": "word"}
+async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     state = user_states.get(user_id)
 
@@ -34,15 +39,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.strip()
     if state["step"] == "word":
-        ...
-
         state["word"] = text
         state["step"] = "meaning"
         await update.message.reply_text("🧠 حالا معنی کلمه را وارد کنید")
     elif state["step"] == "meaning":
         state["meaning"] = text
 
-        # 👉 گرفتن بزرگ‌ترین index قبلی برای اون کاربر
         try:
             result = supabase.table("words") \
                 .select("index") \
@@ -51,13 +53,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 .limit(1) \
                 .execute()
             last_index = result.data[0]["index"] if result.data else 0
-        except Exception as e:
-            await update.message.reply_text(f"❌ خطا در خواندن index:\n{e}")
-            return
+            new_index = last_index + 1
 
-        new_index = last_index + 1
-
-        try:
             supabase.table("words").insert({
                 "word": state["word"],
                 "meaning": state["meaning"],
@@ -69,7 +66,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"❌ خطا در ذخیره‌سازی:\n{e}")
 
         user_states.pop(user_id)
-
 
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
