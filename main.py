@@ -107,8 +107,7 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
     if not context.args:
-        await update.message.reply_text("❗ لطفاً شماره‌ها را بعد از /export بنویس، مثل:
-/export 1 3 5")
+        await update.message.reply_text("❗ لطفاً شماره‌ها را بعد از /export بنویس، مثل:/export 1 3 5")
         return
 
     try:
@@ -187,8 +186,7 @@ async def ask_question(update, context):
 
     buttons = [[InlineKeyboardButton(o["meaning"], callback_data=o["word"])] for o in options]
     await update.message.reply_text(
-        f"❓ سوال {session['current'] + 1} از {len(session['items'])}
-<b>{item['word']}</b> یعنی چی؟",
+        f"❓ سوال {session['current'] + 1} از {len(session['items'])}<b>{item['word']}</b> یعنی چی؟",
         parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(buttons)
     )
@@ -205,8 +203,7 @@ async def answer_callback(update, context):
         session["score"] += 1
         await query.edit_message_text("✅ آفرین درست گفتی")
     else:
-        await query.edit_message_text(f"❌ جواب اشتباه بود. معنی درست:
-{current_item['meaning']}")
+        await query.edit_message_text(f"❌ جواب اشتباه بود. معنی درست:{current_item['meaning']}")
 
     session["current"] += 1
     if session["current"] < len(session["items"]):
