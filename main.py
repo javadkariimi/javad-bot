@@ -100,7 +100,8 @@ async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     context.user_data["add_example_word"] = selected
-    await update.message.reply_text(f"✍ لطفاً جمله‌ای برای "{selected['word']}" ارسال کنید:")
+    await update.message.reply_text(f'✍ لطفاً جمله‌ای برای "{selected["word"]}" ارسال کنید:')
+
 
 
 async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
