@@ -30,7 +30,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text("📄 لطفاً کلمه خود را وارد کنید")
     user_states[update.effective_user.id] = {"step": "word"}
-
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
@@ -45,51 +44,31 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state["step"] == "word":
         state["word"] = text
         state["step"] = "meaning"
-        await update.message.reply_text("🧠 حالا معنی کلمه را وارد کن")
+        await update.message.reply_text("🧠 حالا معنی کلمه را وارد کنید")
     elif state["step"] == "meaning":
         state["meaning"] = text
-        state["step"] = "category"
-        buttons = [[InlineKeyboardButton(cat, callback_data=f"category:{cat}")] for cat in CATEGORIES]
-        await update.message.reply_text("📂 لطفاً دسته‌بندی را انتخاب کن:", reply_markup=InlineKeyboardMarkup(buttons))
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+        try:
+            result = supabase.table("words") \
+                .select("index") \
+                .eq("user_id", str(user_id)) \
+                .order("index", desc=True) \
+                .limit(1) \
+                .execute()
+            last_index = result.data[0]["index"] if result.data else 0
+            new_index = last_index + 1
 
-    user_id = query.from_user.id
-    state = user_states.get(user_id)
-    if not state or not query.data.startswith("category:"):
-        return
+            supabase.table("words").insert({
+                "word": state["word"],
+                "meaning": state["meaning"],
+                "user_id": str(user_id),
+                "index": new_index
+            }).execute()
+            await update.message.reply_text("✅ کلمه با موفقیت ذخیره شد.")
+        except Exception as e:
+            await update.message.reply_text(f"❌ خطا در ذخیره‌سازی:\n{e}")
 
-    category = query.data.split(":")[1]
-    word = state["word"]
-    meaning = state["meaning"]
-
-    try:
-        save_word(user_id, word, meaning, category)
-        await query.edit_message_text(f"✅ کلمه '{word}' با موفقیت در دسته‌بندی '{category}' ذخیره شد.")
-    except Exception as e:
-        await query.edit_message_text(f"❌ خطا در ذخیره‌سازی:\n{e}")
-
-    user_states.pop(user_id)
-
-def save_word(user_id, word, meaning, category):
-    result = supabase.table("words") \
-        .select("index") \
-        .eq("user_id", str(user_id)) \
-        .order("index", desc=True) \
-        .limit(1) \
-        .execute()
-    last_index = result.data[0]["index"] if result.data else 0
-    new_index = last_index + 1
-
-    supabase.table("words").insert({
-        "word": word,
-        "meaning": meaning,
-        "category": category,
-        "user_id": str(user_id),
-        "index": new_index
-    }).execute()
+        user_states.pop(user_id)
 
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -102,8 +81,7 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
     for w in words:
-        category = w.get("category", "❓بدون دسته‌بندی")
-        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']} ({category})\n"
+        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
         examples = w.get("examples") or []
         if examples:
             for ex in examples:
@@ -279,8 +257,7 @@ app.add_handler(CommandHandler("addexample", add_example_command))
 app.add_handler(CommandHandler("quiz", quiz))
 app.add_handler(CommandHandler("export", export_words))
 app.add_handler(CommandHandler("help", help_command))
-app.add_handler(CallbackQueryHandler(button_handler, pattern="^category:.*$"))
 app.add_handler(CallbackQueryHandler(answer_callback))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
 
-app.run_polling()
+app.run_polling() 
