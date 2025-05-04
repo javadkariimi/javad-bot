@@ -31,6 +31,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📄 لطفاً کلمه خود را وارد کنید")
     user_states[update.effective_user.id] = {"step": "word"}
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return
+
     user_id = update.effective_user.id
     state = user_states.get(user_id)
 
@@ -191,6 +194,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/list – نمایش همه کلمات\n"
         "/quiz – آزمون چهارگزینه‌ای\n"
         "/addexample – افزودن جمله\n"
+        "/export - خروجی گرفتن\n"
         "/help – نمایش همین راهنما"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
