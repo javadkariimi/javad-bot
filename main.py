@@ -181,25 +181,6 @@ async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data["add_example_word"] = selected
     await update.message.reply_text(f'✍ لطفاً جمله‌ای برای "{selected["word"]}" ارسال کنید:')
 
-async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != OWNER_ID:
-        return
-
-    words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).order("index").execute().data
-    if not words:
-        await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
-        return
-
-    text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
-    for w in words:
-        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
-        examples = w.get("examples") or []
-        if examples:
-            for ex in examples:
-                text += f"📝 {ex}\n"
-        text += "\n"
-
-    await update.message.reply_text(text.strip(), parse_mode=ParseMode.HTML)
 
 
 async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
