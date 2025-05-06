@@ -109,9 +109,7 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for i in range(0, len(text), MAX_MESSAGE_LENGTH):
         await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
 
-    MAX_MESSAGE_LENGTH = 4000
-    for i in range(0, len(text), MAX_MESSAGE_LENGTH):
-        await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
+    
 
 async def export_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
