@@ -1,7 +1,7 @@
-
 services:
   - type: web
-    name: javad-telegram-bot
+    name: javad-bot
     env: python
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python main.py"
+    plan: free
