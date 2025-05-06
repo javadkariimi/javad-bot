@@ -25,16 +25,12 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 from flask import Flask, request
 
-flask_app = Flask(__name__)
 
-@app.post("/webhook")
-async def webhook(request):
-    update = Update.de_json(await request.json, app.bot)
-    await app.process_update(update)
-    return {"ok": True}
 
 
 user_states = {}  # اضافه شد
+quiz_sessions = {}
+
 CATEGORIES = ["Nomen", "Verb", "Adjektiv", "Adverb"]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -360,14 +356,9 @@ app.add_handler(CallbackQueryHandler(button_handler, pattern="^category:.*$"))
 app.add_handler(CallbackQueryHandler(answer_callback))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
 
-import asyncio
 
-async def main():
-    await app.initialize()
-    await app.start()
-    await app.bot.set_webhook(f"{os.getenv('WEBHOOK_URL')}")
-    await app.updater.start_polling()  # اجباری نیست ولی تداخلی نداره
-    await app.updater.idle()
+print("🤖 ربات با polling اجرا شد!")
+app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
