@@ -1,6 +1,7 @@
 import os
 import re
 import random
+import html  # بالای فایل
 from io import BytesIO
 from telegram.helpers import escape
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -139,13 +140,13 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
         for w in words:
             index = w.get("index", "-")
-            word = escape(w.get("word", "❓"))
-            meaning = escape(w.get("meaning", "❓"))
+            word = html.escape(w.get("word", "❓"))
+            meaning = html.escape(w.get("meaning", "❓"))
             category = escape(w.get("category", "❓بدون دسته‌بندی"))
             text += f"{index}. <b>{word}</b> ➜ {meaning} ({category})\n"
             examples = w.get("examples") or []
             for ex in examples:
-                text += f"📝 {escape(ex)}\n"
+                text += f"📝 {html.escape(ex)}\n"
             text += "\n"
 
 
