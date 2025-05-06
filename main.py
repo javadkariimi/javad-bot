@@ -59,6 +59,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return  # مهم! چون نمی‌خوای بقیه کد اجرا شه
 
     # ✅ ادامه کد مربوط به /start:
+    user_id = update.effective_user.id
     state = user_states.get(user_id)
     if not state:
         return
