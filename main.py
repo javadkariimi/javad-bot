@@ -114,15 +114,13 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
             .eq("user_id", str(update.effective_user.id)) \
             .order("index").execute().data
 
-    print(f"🔍 تعداد کلمات یافت‌شده: {len(words)}")  # خط دیباگ
-
     if not words:
         await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
         return
 
     text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
     for w in words:
-        print(f"➕ {w['word']}")  # خط دیباگ برای هر کلمه
+        print(f"➕ {w['word']}")
         category = w.get("category", "❓بدون دسته‌بندی")
         text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']} ({category})\n"
         examples = w.get("examples") or []
@@ -130,13 +128,11 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text += f"📝 {ex}\n"
         text += "\n"
 
-    print(f"📤 نهایی برای ارسال:\n{text[:200]}...")  # فقط ۲۰۰ کاراکتر اول برای بررسی
+    print(f"📤 نهایی برای ارسال:\n{text[:200]}...")
 
     MAX_MESSAGE_LENGTH = 4000
     for i in range(0, len(text), MAX_MESSAGE_LENGTH):
         await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
-
-
 
 async def export_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
