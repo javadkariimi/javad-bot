@@ -88,7 +88,9 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
             .eq("category", selected_category) \
             .order("index").execute().data
     else:
-        words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).order("index").execute().data
+        words = supabase.table("words").select("*") \
+            .eq("user_id", str(update.effective_user.id)) \
+            .order("index").execute().data
 
     if not words:
         await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
@@ -99,14 +101,15 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         category = w.get("category", "❓بدون دسته‌بندی")
         text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']} ({category})\n"
         examples = w.get("examples") or []
-        if examples:
-            for ex in examples:
-                text += f"📝 {ex}"
-        text += ""
+        for ex in examples:
+            text += f"📝 {ex}\n"
+        text += "\n"
 
     MAX_MESSAGE_LENGTH = 4000
     for i in range(0, len(text), MAX_MESSAGE_LENGTH):
         await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
+
+    MAX_MESSAGE_LENGTH = 4000
     for i in range(0, len(text), MAX_MESSAGE_LENGTH):
         await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
 
