@@ -120,15 +120,18 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
     for w in words:
-        print(f"➕ {w['word']}")
-        category = w.get("category", "❓بدون دسته‌بندی")
-        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']} ({category})\n"
-        examples = w.get("examples") or []
-        for ex in examples:
-            text += f"📝 {ex}\n"
-        text += "\n"
-
-    print(f"📤 نهایی برای ارسال:\n{text[:200]}...")
+        try:
+            index = w.get("index", "-")
+            word = w.get("word", "❓")
+            meaning = w.get("meaning", "❓")
+            category = w.get("category") or "❓بدون دسته‌بندی"
+            text += f"{index}. <b>{word}</b> ➜ {meaning} ({category})\n"
+            examples = w.get("examples") or []
+            for ex in examples:
+                text += f"📝 {ex}\n"
+            text += "\n"
+        except Exception as e:
+            text += f"⚠️ خطا در نمایش یک کلمه: {e}\n\n"
 
     MAX_MESSAGE_LENGTH = 4000
     for i in range(0, len(text), MAX_MESSAGE_LENGTH):
