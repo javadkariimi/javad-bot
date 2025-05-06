@@ -37,8 +37,29 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_id = update.effective_user.id
-    state = user_states.get(user_id)
 
+    # 👇👇 بررسی اینکه کاربر در حالت افزودن جمله هست
+    if "add_example_word" in context.user_data:
+        word_data = context.user_data.pop("add_example_word")
+        word_id = word_data["index"]
+        user_id_str = str(user_id)
+        new_example = update.message.text.strip()
+
+        result = supabase.table("words").select("*") \
+            .eq("user_id", user_id_str).eq("index", word_id).execute().data
+        if result:
+            current = result[0]
+            examples = current.get("examples") or []
+            examples.append(new_example)
+
+            supabase.table("words").update({"examples": examples}) \
+                .eq("user_id", user_id_str).eq("index", word_id).execute()
+
+            await update.message.reply_text("✅ جمله با موفقیت ذخیره شد.")
+        return  # مهم! چون نمی‌خوای بقیه کد اجرا شه
+
+    # ✅ ادامه کد مربوط به /start:
+    state = user_states.get(user_id)
     if not state:
         return
 
