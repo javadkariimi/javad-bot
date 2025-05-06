@@ -77,7 +77,6 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
 
-    # بررسی اینکه آیا کاربر یک دسته خاص خواسته است یا نه
     args = context.args
     if args:
         selected_category = args[0].capitalize()
@@ -95,16 +94,15 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
         return
 
-        text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
+    text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
     for w in words:
         category = w.get("category", "❓بدون دسته‌بندی")
         text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']} ({category})\n"
         examples = w.get("examples") or []
         if examples:
             for ex in examples:
-                text += f"📝 {ex}\n"
-        text += "\n"
-
+                text += f"📝 {ex}"
+        text += ""
 
     MAX_MESSAGE_LENGTH = 4000
     for i in range(0, len(text), MAX_MESSAGE_LENGTH):
