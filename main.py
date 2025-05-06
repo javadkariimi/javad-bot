@@ -12,15 +12,25 @@ from supabase import create_client, Client
 from docx import Document
 from dotenv import load_dotenv
 
-load_dotenv()
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-OWNER_ID = int(os.getenv("OWNER_ID"))
+BOT_TOKEN = "8141794017:AAHcX4QksihxU30bWV57zk7Glf1lyPFIe38"
+SUPABASE_URL = "https://llqwkyekikelwwqcwdhz.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+OWNER_ID = 52134388
+
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = ApplicationBuilder().token(BOT_TOKEN).build()
+from flask import Flask, request
+
+flask_app = Flask(__name__)
+
+@app.post("/webhook")
+async def webhook(request):
+    update = Update.de_json(await request.json, app.bot)
+    await app.process_update(update)
+    return {"ok": True}
+
 
 user_states = {}  # اضافه شد
 CATEGORIES = ["Nomen", "Verb", "Adjektiv", "Adverb"]
@@ -348,4 +358,14 @@ app.add_handler(CallbackQueryHandler(button_handler, pattern="^category:.*$"))
 app.add_handler(CallbackQueryHandler(answer_callback))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
 
-app.run_polling() 
+import asyncio
+
+async def main():
+    await app.initialize()
+    await app.start()
+    await app.bot.set_webhook(f"{os.getenv('WEBHOOK_URL')}")
+    await app.updater.start_polling()  # اجباری نیست ولی تداخلی نداره
+    await app.updater.idle()
+
+if __name__ == "__main__":
+    asyncio.run(main())
