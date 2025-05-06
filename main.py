@@ -327,6 +327,7 @@ app.add_handler(CommandHandler("addexample", add_example_command))
 app.add_handler(CommandHandler("quiz", quiz))
 app.add_handler(CommandHandler("export", export_words))
 app.add_handler(CommandHandler("help", help_command))
+app.add_handler(CallbackQueryHandler(button_handler, pattern="^category:.*$"))
 app.add_handler(CallbackQueryHandler(answer_callback))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
 
