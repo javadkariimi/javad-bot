@@ -360,5 +360,3 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler)
 print("🤖 ربات با polling اجرا شد!")
 app.run_polling()
 
-if __name__ == "__main__":
-    main()
