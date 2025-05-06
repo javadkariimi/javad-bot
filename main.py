@@ -13,10 +13,12 @@ from docx import Document
 from dotenv import load_dotenv
 
 
-BOT_TOKEN = "8141794017:AAHcX4QksihxU30bWV57zk7Glf1lyPFIe38"
-SUPABASE_URL = "https://llqwkyekikelwwqcwdhz.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-OWNER_ID = 52134388
+load_dotenv()
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+OWNER_ID = int(os.getenv("OWNER_ID"))
 
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
