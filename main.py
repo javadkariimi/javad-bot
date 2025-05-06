@@ -12,6 +12,8 @@ from supabase import create_client, Client
 from docx import Document
 from dotenv import load_dotenv
 from telegram.helpers import escape
+       
+
 
 
 load_dotenv()
@@ -133,17 +135,19 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
             return
 
+
         text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
         for w in words:
             index = w.get("index", "-")
             word = escape(w.get("word", "❓"))
             meaning = escape(w.get("meaning", "❓"))
-            category = w.get("category", "❓بدون دسته‌بندی")
+            category = escape(w.get("category", "❓بدون دسته‌بندی"))
             text += f"{index}. <b>{word}</b> ➜ {meaning} ({category})\n"
             examples = w.get("examples") or []
             for ex in examples:
-                text += f"📝 {ex}\n"
+                text += f"📝 {escape(ex)}\n"
             text += "\n"
+
 
         MAX_MESSAGE_LENGTH = 4000
         for i in range(0, len(text), MAX_MESSAGE_LENGTH):
