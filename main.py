@@ -2,6 +2,7 @@ import os
 import re
 import random
 from io import BytesIO
+from telegram.helpers import escape
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -11,7 +12,6 @@ from telegram.ext import (
 from supabase import create_client, Client
 from docx import Document
 from dotenv import load_dotenv
-from telegram.helpers import escape
        
 
 
@@ -147,6 +147,7 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for ex in examples:
                 text += f"📝 {escape(ex)}\n"
             text += "\n"
+
 
 
         MAX_MESSAGE_LENGTH = 4000
