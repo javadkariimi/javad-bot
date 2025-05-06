@@ -23,13 +23,15 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 user_states = {}  # اضافه شد
-
+CATEGORIES = ["Nomen", "Verb", "Adjektiv", "Adverb"]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
     await update.message.reply_text("📄 لطفاً کلمه خود را وارد کنید")
     user_states[update.effective_user.id] = {"step": "word"}
+
+
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
@@ -47,48 +49,115 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🧠 حالا معنی کلمه را وارد کنید")
     elif state["step"] == "meaning":
         state["meaning"] = text
+        state["step"] = "category"
+        buttons = [[InlineKeyboardButton(cat, callback_data=f"category:{cat}")] for cat in CATEGORIES]
+        await update.message.reply_text("📂 لطفاً دسته‌بندی را انتخاب کن:", reply_markup=InlineKeyboardMarkup(buttons))
 
-        try:
-            result = supabase.table("words") \
-                .select("index") \
-                .eq("user_id", str(user_id)) \
-                .order("index", desc=True) \
-                .limit(1) \
-                .execute()
-            last_index = result.data[0]["index"] if result.data else 0
-            new_index = last_index + 1
 
-            supabase.table("words").insert({
-                "word": state["word"],
-                "meaning": state["meaning"],
-                "user_id": str(user_id),
-                "index": new_index
-            }).execute()
-            await update.message.reply_text("✅ کلمه با موفقیت ذخیره شد.")
-        except Exception as e:
-            await update.message.reply_text(f"❌ خطا در ذخیره‌سازی:\n{e}")
 
-        user_states.pop(user_id)
+def save_word(user_id, word, meaning, category):
+    result = supabase.table("words") \
+        .select("index") \
+        .eq("user_id", str(user_id)) \
+        .order("index", desc=True) \
+        .limit(1) \
+        .execute()
+    last_index = result.data[0]["index"] if result.data else 0
+    new_index = last_index + 1
+
+    supabase.table("words").insert({
+        "word": word,
+        "meaning": meaning,
+        "category": category,
+        "user_id": str(user_id),
+        "index": new_index
+    }).execute()
 
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
 
-    words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).order("index").execute().data
+    # بررسی اینکه آیا کاربر یک دسته خاص خواسته است یا نه
+    args = context.args
+    if args:
+        selected_category = args[0].capitalize()
+        if selected_category not in CATEGORIES:
+            await update.message.reply_text("❗ دسته‌بندی معتبر نیست. دسته‌های مجاز: Nomen, Verb, Adjektiv, Adverb")
+            return
+        words = supabase.table("words").select("*") \
+            .eq("user_id", str(update.effective_user.id)) \
+            .eq("category", selected_category) \
+            .order("index").execute().data
+    else:
+        words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).order("index").execute().data
+
     if not words:
         await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
         return
 
-    text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
+        text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
     for w in words:
-        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']}\n"
+        category = w.get("category", "❓بدون دسته‌بندی")
+        text += f"{w['index']}. <b>{w['word']}</b> ➜ {w['meaning']} ({category})\n"
         examples = w.get("examples") or []
         if examples:
             for ex in examples:
                 text += f"📝 {ex}\n"
         text += "\n"
 
-    await update.message.reply_text(text.strip(), parse_mode=ParseMode.HTML)
+
+    MAX_MESSAGE_LENGTH = 4000
+    for i in range(0, len(text), MAX_MESSAGE_LENGTH):
+        await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
+    for i in range(0, len(text), MAX_MESSAGE_LENGTH):
+        await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
+
+async def export_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return
+
+    words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).order("index").execute().data
+    if not words:
+        await update.message.reply_text("⚠️ هیچ کلمه‌ای برای خروجی وجود ندارد.")
+        return
+
+    doc = Document()
+    doc.add_heading("تمام کلمات ذخیره‌شده", 0)
+    for item in words:
+        doc.add_heading(f"{item['index']}. {item['word']}", level=1)
+        doc.add_paragraph(f"🔹 معنی: {item['meaning']}")
+        doc.add_paragraph(f"🏷 دسته‌بندی: {item.get('category', 'بدون دسته‌بندی')}")
+        examples = item.get("examples") or []
+        if examples:
+            doc.add_paragraph("📝 مثال‌ها:")
+            for ex in examples:
+                doc.add_paragraph(f"• {ex}", style='List Bullet')
+
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    await update.message.reply_document(document=buffer, filename="alle_woerter.docx")
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+    state = user_states.get(user_id)
+    if not state or not query.data.startswith("category:"):
+        return
+
+    category = query.data.split(":")[1]
+    word = state["word"]
+    meaning = state["meaning"]
+
+    try:
+        save_word(user_id, word, meaning, category)
+        await query.edit_message_text(f"✅ کلمه '{word}' با موفقیت در دسته‌بندی '{category}' ذخیره شد.")
+    except Exception as e:
+        await query.edit_message_text(f"❌ خطا در ذخیره‌سازی:{e}")
+
+    user_states.pop(user_id)
 
 
 async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -250,6 +319,7 @@ async def answer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=query.from_user.id,
             text=f"🏁 آزمون تمام شد. امتیاز: {session['score']} از {len(session['items'])}"
         )
+app.add_handler(CommandHandler("exportall", export_all))
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("list", list_words))
