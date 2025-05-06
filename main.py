@@ -103,65 +103,65 @@ def save_word(user_id, word, meaning, category):
         "index": new_index
     }).execute()
 
+import html  # مطمئن شو این بالای فایل هست
+
 async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
 
     try:
         user_id_str = str(update.effective_user.id)
-        print("📥 /list command called by", user_id_str)
+        print(f"👤 کاربر: {user_id_str}")
 
         args = context.args
         if args:
             selected_category = args[0].capitalize()
-            print("📂 Requested category:", selected_category)
+            print(f"📂 دسته انتخاب‌شده: {selected_category}")
             if selected_category not in CATEGORIES:
-                await update.message.reply_text(
-                    "❗ دسته‌بندی معتبر نیست. دسته‌های مجاز: Nomen, Verb, Adjektiv, Adverb"
-                )
+                await update.message.reply_text("❗ دسته‌بندی معتبر نیست. دسته‌های مجاز: Nomen, Verb, Adjektiv, Adverb")
                 return
             words = supabase.table("words").select("*") \
                 .eq("user_id", user_id_str) \
                 .eq("category", selected_category) \
                 .order("index").execute().data
         else:
-            print("📃 Fetching full word list...")
+            print("📃 در حال دریافت لیست کامل...")
             words = supabase.table("words").select("*") \
                 .eq("user_id", user_id_str) \
                 .order("index").execute().data
 
-        print("🔍 Found", len(words), "words")
+        print(f"🔎 تعداد کلمات: {len(words)}")
 
         if not words:
             await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
             return
-
 
         text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
         for w in words:
             index = w.get("index", "-")
             word = html.escape(w.get("word", "❓"))
             meaning = html.escape(w.get("meaning", "❓"))
-            category = escape(w.get("category", "❓بدون دسته‌بندی"))
+            category = html.escape(w.get("category", "❓بدون دسته‌بندی"))
             text += f"{index}. <b>{word}</b> ➜ {meaning} ({category})\n"
             examples = w.get("examples") or []
             for ex in examples:
                 text += f"📝 {html.escape(ex)}\n"
             text += "\n"
 
-
-
+        print("📤 ارسال پیام به کاربر...")
         MAX_MESSAGE_LENGTH = 4000
         for i in range(0, len(text), MAX_MESSAGE_LENGTH):
             await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
 
     except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        print("❌ Error in /list:", error_details)
-        await update.message.reply_text("🚫 خطایی در اجرای دستور پیش آمد:\n" + str(e))
+        print(f"❌ خطای غیرمنتظره در list_words: {e}")
+        await update.message.reply_text(f"🚫 خطایی در اجرای دستور پیش آمد:\n{e}")
 
+        MAX_MESSAGE_LENGTH = 4000
+        for i in range(0, len(text), MAX_MESSAGE_LENGTH):
+            await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
 
+    
 
 async def export_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
