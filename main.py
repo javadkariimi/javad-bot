@@ -105,26 +105,28 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         user_id_str = str(update.effective_user.id)
-        print(f"👤 کاربر: {user_id_str}")
+        print("📥 /list command called by", user_id_str)
 
         args = context.args
         if args:
             selected_category = args[0].capitalize()
-            print(f"📂 دسته انتخاب‌شده: {selected_category}")
+            print("📂 Requested category:", selected_category)
             if selected_category not in CATEGORIES:
-                await update.message.reply_text("❗ دسته‌بندی معتبر نیست. دسته‌های مجاز: Nomen, Verb, Adjektiv, Adverb")
+                await update.message.reply_text(
+                    "❗ دسته‌بندی معتبر نیست. دسته‌های مجاز: Nomen, Verb, Adjektiv, Adverb"
+                )
                 return
             words = supabase.table("words").select("*") \
                 .eq("user_id", user_id_str) \
                 .eq("category", selected_category) \
                 .order("index").execute().data
         else:
-            print("📃 در حال دریافت لیست کامل...")
+            print("📃 Fetching full word list...")
             words = supabase.table("words").select("*") \
                 .eq("user_id", user_id_str) \
                 .order("index").execute().data
 
-        print(f"🔎 تعداد کلمات: {len(words)}")
+        print("🔍 Found", len(words), "words")
 
         if not words:
             await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
@@ -142,14 +144,16 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text += f"📝 {ex}\n"
             text += "\n"
 
-        print("📤 ارسال پیام به کاربر...")
         MAX_MESSAGE_LENGTH = 4000
         for i in range(0, len(text), MAX_MESSAGE_LENGTH):
             await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
 
     except Exception as e:
-        print(f"❌ خطای غیرمنتظره در list_words: {e}")
-        await update.message.reply_text("🚫 خطایی در اجرای دستور پیش آمد.")
+        import traceback
+        error_details = traceback.format_exc()
+        print("❌ Error in /list:", error_details)
+        await update.message.reply_text("🚫 خطایی در اجرای دستور پیش آمد:\n" + str(e))
+
 
 
 async def export_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
