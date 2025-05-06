@@ -351,6 +351,23 @@ async def answer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=query.from_user.id,
             text=f"🏁 آزمون تمام شد. امتیاز: {session['score']} از {len(session['items'])}"
         )
+async def show_all_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != OWNER_ID:
+        return
+
+    words = supabase.table("words").select("*") \
+        .eq("user_id", str(update.effective_user.id)) \
+        .order("index").execute().data
+
+    if not words:
+        await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
+        return
+
+    for w in words:
+        word = html.escape(w.get("word", "❓"))
+        meaning = html.escape(w.get("meaning", "❓"))
+        await update.message.reply_text(f"<b>{word}</b> ➜ {meaning}", parse_mode=ParseMode.HTML)
+
 app.add_handler(CommandHandler("exportall", export_all))
 
 app.add_handler(CommandHandler("start", start))
@@ -362,6 +379,8 @@ app.add_handler(CommandHandler("help", help_command))
 app.add_handler(CallbackQueryHandler(button_handler, pattern="^category:.*$"))
 app.add_handler(CallbackQueryHandler(answer_callback))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+app.add_handler(CommandHandler("showall", show_all_words))
+
 
 
 print("🤖 ربات با polling اجرا شد!")
