@@ -23,10 +23,6 @@ OWNER_ID = int(os.getenv("OWNER_ID"))
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = ApplicationBuilder().token(BOT_TOKEN).build()
-from flask import Flask, request
-
-
-
 
 user_states = {}  # اضافه شد
 quiz_sessions = {}
