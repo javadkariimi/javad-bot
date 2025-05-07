@@ -58,14 +58,14 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id_str = str(user_id)
         new_example = update.message.text.strip()
 
-        result = supabase.table("words").select("*") \
+        result = supabase.from_("words").select("*") \
             .eq("user_id", user_id_str).eq("index", word_id).execute().data
         if result:
             current = result[0]
             examples = current.get("examples") or []
             examples.append(new_example)
 
-            supabase.table("words").update({"examples": examples}) \
+            supabase.from_("words").update({"examples": examples}) \
                 .eq("user_id", user_id_str).eq("index", word_id).execute()
 
             await update.message.reply_text("✅ جمله با موفقیت ذخیره شد.")
@@ -91,7 +91,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def save_word(user_id, word, meaning, category):
-    result = supabase.table("words") \
+    result = supabase.from_("words") \
         .select("index") \
         .eq("user_id", str(user_id)) \
         .order("index", desc=True) \
@@ -100,7 +100,7 @@ def save_word(user_id, word, meaning, category):
     last_index = result.data[0]["index"] if result.data else 0
     new_index = last_index + 1
 
-    supabase.table("words").insert({
+    supabase.from_("words").insert({
         "word": word,
         "meaning": meaning,
         "category": category,
@@ -125,13 +125,13 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if selected_category not in CATEGORIES:
                 await update.message.reply_text("❗ دسته‌بندی معتبر نیست. دسته‌های مجاز: Nomen, Verb, Adjektiv, Adverb")
                 return
-            words = supabase.table("words").select("*") \
+            words = supabase.from_("words").select("*") \
                 .eq("user_id", user_id_str) \
                 .eq("category", selected_category) \
                 .order("index").execute().data
         else:
             print("📃 در حال دریافت لیست کامل...")
-            words = supabase.table("words").select("*") \
+            words = supabase.from_("words").select("*") \
                 .eq("user_id", user_id_str) \
                 .order("index").execute().data
 
@@ -172,7 +172,7 @@ async def export_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
 
-    words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).order("index").execute().data
+    words = supabase.from_("words").select("*").eq("user_id", str(update.effective_user.id)).order("index").execute().data
     if not words:
         await update.message.reply_text("⚠️ هیچ کلمه‌ای برای خروجی وجود ندارد.")
         return
@@ -225,7 +225,7 @@ async def add_example_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     keyword = " ".join(context.args).strip()
-    words = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
+    words = supabase.from_("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
     selected = None
     if keyword.isdigit():
         selected = next((w for w in words if w.get("index") == int(keyword)), None)
@@ -255,7 +255,7 @@ async def export_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ لطفاً فقط شماره‌های معتبر وارد کن.")
         return
 
-    data = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
+    data = supabase.from_("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
     filtered = [w for w in data if w.get("index") in indexes]
 
     if not filtered:
@@ -309,7 +309,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
-    data = supabase.table("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
+    data = supabase.from_("words").select("*").eq("user_id", str(update.effective_user.id)).execute().data
     if len(data) < 4:
         await update.message.reply_text("⚠️ حداقل ۴ کلمه لازم است.")
         return
@@ -361,7 +361,7 @@ async def show_all_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return
 
-    words = supabase.table("words").select("*") \
+    words = supabase.from_("words").select("*") \
         .eq("user_id", str(update.effective_user.id)) \
         .order("index").execute().data
 
