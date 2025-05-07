@@ -1,4 +1,4 @@
-python-telegram-bot[webhooks]==25.1.1
+python-telegram-bot[webhooks]==20.7
 Flask==2.3.3
 python-dotenv>=1.0.0
 supabase==0.0.3
