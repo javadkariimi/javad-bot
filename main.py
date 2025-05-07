@@ -10,7 +10,7 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
     CallbackQueryHandler, ContextTypes, filters
 )
-from supabase import create_client, Client
+from postgrest import APIClient
 from docx import Document
 from dotenv import load_dotenv
        
@@ -25,7 +25,12 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 OWNER_ID = int(os.getenv("OWNER_ID"))
 
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+supabase = APIClient(f"{SUPABASE_URL}/rest/v1", headers={
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}"
+})
+
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 user_states = {}  # اضافه شد
