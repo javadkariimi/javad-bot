@@ -368,18 +368,19 @@ async def show_all_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         meaning = html.escape(w.get("meaning", "❓"))
         await update.message.reply_text(f"<b>{word}</b> ➜ {meaning}", parse_mode=ParseMode.HTML)
 
-app.add_handler(CommandHandler("exportall", export_all))
-
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("list", list_words))
-app.add_handler(CommandHandler("addexample", add_example_command))
 app.add_handler(CommandHandler("quiz", quiz))
 app.add_handler(CommandHandler("export", export_words))
+app.add_handler(CommandHandler("exportall", export_all))
+app.add_handler(CommandHandler("addexample", add_example_command))
 app.add_handler(CommandHandler("help", help_command))
+app.add_handler(CommandHandler("showall", show_all_words))
+
 app.add_handler(CallbackQueryHandler(button_handler, pattern="^category:.*$"))
 app.add_handler(CallbackQueryHandler(answer_callback))
+
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
-app.add_handler(CommandHandler("showall", show_all_words))
 
 
 
