@@ -296,6 +296,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/quiz – آزمون چهارگزینه‌ای\n"
         "/addexample – افزودن جمله\n"
         "/export - خروجی گرفتن\n"
+        "/showall -نمایش همه کلمات "
         "/help – نمایش همین راهنما"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
@@ -363,10 +364,33 @@ async def show_all_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
         return
 
+    MAX_MESSAGE_LENGTH = 4000  # محدودیت تلگرام
+    message_parts = []
+    current_text = ""
+
     for w in words:
+        index = w.get("index", "❓")
         word = html.escape(w.get("word", "❓"))
         meaning = html.escape(w.get("meaning", "❓"))
-        await update.message.reply_text(f"<b>{word}</b> ➜ {meaning}", parse_mode=ParseMode.HTML)
+        examples = w.get("examples") or []
+
+        block = f"{index}. <b>{word}</b> ➜ {meaning}\n"
+        for ex in examples:
+            block += f"📝 {html.escape(ex)}\n"
+        block += "\n"
+
+        if len(current_text) + len(block) > MAX_MESSAGE_LENGTH:
+            message_parts.append(current_text)
+            current_text = block
+        else:
+            current_text += block
+
+    if current_text:
+        message_parts.append(current_text)
+
+    for part in message_parts:
+        await update.message.reply_text(part.strip(), parse_mode=ParseMode.HTML)
+
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("list", list_words))
