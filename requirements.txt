@@ -1,5 +1,5 @@
 python-telegram-bot[webhooks]==20.4
 Flask==2.3.3
 python-dotenv>=1.0.0
-supabase==1.0.3
+supabase==0.0.8
 python-docx==1.1.0
