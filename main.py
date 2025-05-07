@@ -411,3 +411,22 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler)
 print("🤖 ربات با polling اجرا شد!")
 app.run_polling()
 
+import asyncio
+
+PORT = int(os.environ.get("PORT", 8443))
+RENDER_HOST = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+WEBHOOK_PATH = f"/{BOT_TOKEN}"
+WEBHOOK_URL = f"https://{RENDER_HOST}/{BOT_TOKEN}"
+
+async def main():
+    await app.initialize()
+    await app.bot.set_webhook(WEBHOOK_URL)
+    await app.start()
+    await app.updater.start_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path=WEBHOOK_PATH,
+    )
+
+if __name__ == "__main__":
+    asyncio.run(main())
