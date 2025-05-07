@@ -408,9 +408,6 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler)
 
 
 
-print("🤖 ربات با polling اجرا شد!")
-app.run_polling()
-
 import asyncio
 
 PORT = int(os.environ.get("PORT", 8443))
