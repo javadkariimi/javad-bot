@@ -407,10 +407,10 @@ app.add_handler(CallbackQueryHandler(answer_callback))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
 
 
-
 import asyncio
+from telegram.ext import Application
 
-PORT = int(os.environ.get("PORT", 8443))
+PORT = int(os.environ.get("PORT", "8080"))
 RENDER_HOST = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 WEBHOOK_PATH = f"/{BOT_TOKEN}"
 WEBHOOK_URL = f"https://{RENDER_HOST}/{BOT_TOKEN}"
@@ -424,6 +424,7 @@ async def main():
         port=PORT,
         url_path=WEBHOOK_PATH,
     )
+    await app.updater.wait_until_closed()  # مهم برای باز نگه‌داشتن پورت
 
 if __name__ == "__main__":
     asyncio.run(main())
