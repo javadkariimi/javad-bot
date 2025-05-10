@@ -113,12 +113,10 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         user_id_str = str(update.effective_user.id)
-        print(f"👤 کاربر: {user_id_str}")
-
         args = context.args
+
         if args:
             selected_category = args[0].capitalize()
-            print(f"📂 دسته انتخاب‌شده: {selected_category}")
             if selected_category not in CATEGORIES:
                 await update.message.reply_text("❗ دسته‌بندی معتبر نیست. دسته‌های مجاز: Nomen, Verb, Adjektiv, Adverb")
                 return
@@ -127,41 +125,44 @@ async def list_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 .eq("category", selected_category) \
                 .order("index").execute().data
         else:
-            print("📃 در حال دریافت لیست کامل...")
             words = supabase.from_("words").select("*") \
                 .eq("user_id", user_id_str) \
                 .order("index").execute().data
-
-        print(f"🔎 تعداد کلمات: {len(words)}")
 
         if not words:
             await update.message.reply_text("⚠️ هیچ کلمه‌ای ذخیره نشده.")
             return
 
         text = "📚 <b>کلمه‌های ذخیره‌شده:</b>\n\n"
+        messages = []
         for w in words:
             index = w.get("index", "-")
             word = html.escape(w.get("word", "❓"))
             meaning = html.escape(w.get("meaning", "❓"))
             category = html.escape(w.get("category", "❓بدون دسته‌بندی"))
-            text += f"{index}. <b>{word}</b> ➜ {meaning} ({category})\n"
             examples = w.get("examples") or []
-            for ex in examples:
-                text += f"📝 {html.escape(ex)}\n"
-            text += "\n"
 
-        print("📤 ارسال پیام به کاربر...")
-        MAX_MESSAGE_LENGTH = 4000
-        for i in range(0, len(text), MAX_MESSAGE_LENGTH):
-            await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
+            block = f"{index}. <b>{word}</b> ➜ {meaning} ({category})\n"
+            for ex in examples:
+                block += f"📝 {html.escape(ex)}\n"
+            block += "\n"
+
+            if len(text + block) > 4000:
+                messages.append(text)
+                text = ""
+
+            text += block
+
+        if text:
+            messages.append(text)
+
+        for msg in messages:
+            await update.message.reply_text(msg.strip(), parse_mode=ParseMode.HTML)
 
     except Exception as e:
         print(f"❌ خطای غیرمنتظره در list_words: {e}")
-        await update.message.reply_text(f"🚫 خطایی در اجرای دستور پیش آمد:\n{e}")
+        await update.message.reply_text("🚫 خطایی در اجرای دستور پیش آمد.")
 
-        MAX_MESSAGE_LENGTH = 4000
-        for i in range(0, len(text), MAX_MESSAGE_LENGTH):
-            await update.message.reply_text(text[i:i+MAX_MESSAGE_LENGTH], parse_mode=ParseMode.HTML)
 
     
 
@@ -298,7 +299,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/quiz – آزمون چهارگزینه‌ای\n"
         "/addexample – افزودن جمله\n"
         "/export - خروجی گرفتن\n"
-        "/showall -نمایش همه کلمات "
+        "/showall -نمایش همه کلمات \n"
         "/help – نمایش همین راهنما"
     )
     await update.message.reply_text(text, parse_mode=ParseMode.HTML)
